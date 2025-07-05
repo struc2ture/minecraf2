@@ -1,0 +1,83 @@
+#include <stdbool.h>
+#include <stdio.h>
+
+#include <OpenGL/gl3.h>
+#include <GLFW/glfw3.h>
+
+#include "common.h"
+#include "gl_glue.h"
+#include "platform_types.h"
+
+typedef struct {
+    GLuint prog;
+    GLuint vao, vbo;
+    float w, h;
+} Game_State;
+
+void on_init(Game_State *state, GLFWwindow *window, float window_w, float window_h, float window_px_w, float window_px_h, bool is_live_scene, GLuint fbo, int argc, char **argv)
+{
+    state->w = window_px_w;
+    state->h = window_px_h;
+
+    state->prog = gl_create_shader_program(
+        "#version 330 core\n"
+        "layout (location = 0) in vec3 aPos;\n"
+        "layout (location = 1) in vec3 aColor;\n"
+        "out vec3 Color;\n"
+        "void main()\n"
+        "{\n"
+        "  gl_Position = vec4(aPos, 1.0);\n"
+        "  Color = aColor;\n"
+        "}\n",
+
+        "#version 330 core\n"
+        "in vec3 Color;\n"
+        "out vec4 FragColor;\n"
+        "void main()\n"
+        "{\n"
+        "  FragColor = vec4(Color, 1.0);\n"
+        "}\n");
+        
+    float tri_verts[] =
+    {
+         0.0f,  0.5f, 0, 1, 0, 0,
+        -0.5f, -0.5f, 0, 0, 1, 0,
+         0.5f, -0.5f, 0, 0, 0, 1,
+    };
+    
+    glGenVertexArrays(1, &state->vao);
+    glBindVertexArray(state->vao);
+    glGenBuffers(1, &state->vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, state->vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(tri_verts), tri_verts, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+}
+
+void on_reload(Game_State *state)
+{
+}
+
+void on_frame(Game_State *state, const Platform_Timing *t)
+{
+    glViewport(0, 0, (GLsizei)state->w, (GLsizei)state->h);
+
+    glUseProgram(state->prog);
+    glBindVertexArray(state->vao);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+void on_platform_event(Game_State *state, const Platform_Event *e)
+{
+}
+
+void on_destroy(Game_State *state)
+{
+    glDeleteBuffers(1, &state->vbo);
+    glDeleteVertexArrays(1, &state->vao);
+    glDeleteProgram(state->prog);
+}
