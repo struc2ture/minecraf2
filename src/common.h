@@ -10,6 +10,10 @@ typedef struct {
 #define VEC2_FMT "<%0.2f, %0.2f>"
 #define VEC2_ARG(v) (v).x, (v).y
 
+typedef struct {
+    float x, y, z;
+} Vec_3;
+
 /*
  * OpenGL expects column-major.
  * m[column][row]
@@ -106,6 +110,20 @@ static inline Mat_4 mat4_proj_ortho(float left, float right, float bottom, float
     return m;
 }
 
+static inline Mat_4 mat4_proj_perspective(float fov, float aspect, float znear, float zfar)
+{    
+    float tan_half = tanf(fov / 2.0f);
+
+    Mat_4 m = {0};
+    m.m[0] = 1.0f / (aspect * tan_half);
+    m.m[5] = 1.0f / tan_half;
+    m.m[10] = -(zfar + znear) / (zfar - znear);
+    m.m[11] = -1.0f;
+    m.m[14] = -(2.0f * zfar * znear) / (zfar - znear);
+
+    return m;
+}
+
 static inline Mat_4 mat4_translate(float x, float y, float z)
 {
     Mat_4 m = mat4_identity();
@@ -153,3 +171,93 @@ static inline Mat_4 mat4_rotate_axis(float x, float y, float z, float theta)
 
     return m;
 }
+
+static inline Vec_3 vec3_normalize(Vec_3 v)
+{
+    float mag = sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
+    if  (mag == 0.0f) return (Vec_3){0};
+    float i_mag = 1.0f / mag;
+    Vec_3 result = {
+        .x = v.x * i_mag,
+        .y = v.y * i_mag,
+        .z = v.z * i_mag
+    };
+    return result;
+}
+
+static inline Vec_3 vec3_cross(Vec_3 a, Vec_3 b)
+{
+    Vec_3 result = {
+        .x = a.y*b.z - a.z*b.y,
+        .y = a.z*b.x - a.x*b.z,
+        .z = a.x*b.y - a.y*b.x
+    };
+    return result;
+}
+
+static inline Vec_3 vec3_sub(Vec_3 a, Vec_3 b)
+{
+    Vec_3 result = {
+        .x = a.x - b.x,
+        .y = a.y - b.y,
+        .z = a.z - b.z,
+    };
+    return result;
+}
+
+static inline float vec3_dot(Vec_3 a, Vec_3 b)
+{
+    float result = a.x*b.x + a.y*b.y + a.z*b.z;
+    return result;
+}
+
+static inline Vec_3 vec3_add(Vec_3 a, Vec_3 b)
+{
+    Vec_3 result = {
+        .x = a.x + b.x,
+        .y = a.y + b.y,
+        .z = a.z + b.z
+    };
+    return result;
+}
+
+static inline Vec_3 vec3_scale(Vec_3 v, float s)
+{
+    Vec_3 result = {
+        .x = v.x * s,
+        .y = v.y * s,
+        .z = v.z * s
+    };
+    return result;
+}
+
+static inline Mat_4 mat4_look_at(Vec_3 eye, Vec_3 target, Vec_3 up)
+{
+    Vec_3 f = vec3_normalize(vec3_sub(target, eye));
+    Vec_3 r = vec3_normalize(vec3_cross(f, up));
+    Vec_3 u = vec3_cross(r, f);
+    
+    Mat_4 m;
+    m.m[0] = r.x;
+    m.m[1] = u.x;
+    m.m[2] = -f.x;
+    m.m[3] = 0;
+    
+    m.m[4] = r.y;
+    m.m[5] = u.y;
+    m.m[6] = -f.y;
+    m.m[7] = 0;
+    
+    m.m[8] = r.z;
+    m.m[9] = u.z;
+    m.m[10] = -f.z;
+    m.m[11] = 0;
+    
+    m.m[12] = -vec3_dot(r, eye);
+    m.m[13] = -vec3_dot(u, eye);
+    m.m[14] = vec3_dot(f, eye);
+    m.m[15] = 1;
+    
+    return m;
+}
+
